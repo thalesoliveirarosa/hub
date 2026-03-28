@@ -184,9 +184,178 @@ body::after{
   .level-grid.single{max-width:100%;}
   .hd img{width:80px;height:80px;}
 }
+
+/* ── LOGIN GATE ── */
+#gate{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:0;
+  animation:fadeD .5s ease both;
+}
+#gate.hidden{display:none;}
+.gate-logo{
+  width:90px;height:90px;object-fit:contain;border-radius:10px;
+  margin-bottom:28px;
+  filter:drop-shadow(0 0 20px rgba(201,168,76,0.2));
+}
+.gate-name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:12px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:6px;text-align:center;
+}
+.gate-sub{
+  font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:36px;text-align:center;
+}
+.gate-box{
+  background:var(--sur);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:28px 28px 24px;
+  width:320px;
+  display:flex;flex-direction:column;gap:16px;
+  position:relative;overflow:hidden;
+}
+.gate-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(to right,transparent,var(--gold),transparent);
+  opacity:.4;
+}
+.gate-label{
+  font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);
+}
+.gate-input{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:11px 14px;
+  color:#fff;
+  font-family:'JetBrains Mono',monospace;
+  font-size:14px;
+  letter-spacing:.12em;
+  outline:none;
+  width:100%;
+  transition:border-color .2s;
+}
+.gate-input:focus{border-color:var(--gold);}
+.gate-input.error{border-color:#c94c4c;animation:shake .3s ease;}
+.gate-btn{
+  background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));
+  border:1px solid var(--gold-line);
+  border-radius:8px;
+  padding:11px;
+  color:var(--gold);
+  font-family:'Cormorant Garamond',serif;
+  font-size:14px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;
+  cursor:pointer;
+  transition:background .2s,box-shadow .2s;
+  width:100%;
+}
+.gate-btn:hover{
+  background:linear-gradient(135deg,rgba(201,168,76,0.25),rgba(201,168,76,0.12));
+  box-shadow:0 0 20px rgba(201,168,76,0.15);
+}
+.gate-err{
+  font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:#c94c4c;text-align:center;height:12px;
+}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-6px)}
+  75%{transform:translateX(6px)}
+}
 </style>
 </head>
 <body>
+
+<!-- LOGIN GATE -->
+<div id="gate">
+  <img class="gate-logo" id="gate-logo" src="" alt="Atlas Corporação">
+  <div class="gate-name">Atlas Corporação</div>
+  <div class="gate-sub">Acesso restrito</div>
+  <div class="gate-box">
+    <div class="gate-label">Senha de acesso</div>
+    <input class="gate-input" id="gate-pwd" type="password" placeholder="••••••••••" autocomplete="off">
+    <button class="gate-btn" onclick="checkPwd()">Entrar</button>
+    <div class="gate-err" id="gate-err"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    var logo = document.querySelector('.hd img');
+    if(logo) document.getElementById('gate-logo').src = logo.src;
+  });
+
+  // allow Enter key
+  document.getElementById('gate-pwd').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') checkPwd();
+  });
+})();
+
+function checkPwd(){
+  var pwd = document.getElementById('gate-pwd').value;
+  var hash = sha256(pwd);
+  if(hash === '470530ed8694b86a7ff65189c2249d9e1bdfda9ebdf57c532fab5f3ab36a4dd0'){
+    document.getElementById('gate').classList.add('hidden');
+  } else {
+    var inp = document.getElementById('gate-pwd');
+    var err = document.getElementById('gate-err');
+    inp.classList.add('error');
+    err.textContent = 'Senha incorreta';
+    setTimeout(function(){ inp.classList.remove('error'); inp.value=''; }, 700);
+  }
+}
+
+// minimal SHA-256
+function sha256(str){
+  function rightRotate(v,a){return(v>>>a)|(v<<(32-a));}
+  var mathPow=Math.pow,maxWord=mathPow(2,32),i,j,result='';
+  var words=[],asciiBitLength=str.length*8;
+  var hash=sha256.h=sha256.h||[];
+  var k=sha256.k=sha256.k||[];
+  var primeCounter=sha256.primeCounter=sha256.primeCounter||0;
+  var isComposite={};
+  for(var candidate=2;primeCounter<64;candidate++){
+    if(!isComposite[candidate]){
+      for(i=0;i<313;i+=candidate) isComposite[i]=candidate;
+      hash[primeCounter]=mathPow(candidate,.5)*maxWord|0;
+      k[primeCounter++]=mathPow(candidate,1/3)*maxWord|0;
+    }
+  }
+  str+='\x80';
+  while(str.length%64-56) str+='\x00';
+  for(i=0;i<str.length;i++){
+    j=str.charCodeAt(i);
+    if(j>>8) return '';
+    words[i>>2]|=j<<((3-i)%4*8);
+  }
+  words[words.length]=((asciiBitLength/maxWord)|0);
+  words[words.length]=(asciiBitLength|0);
+  for(j=0;j<words.length;){
+    var W=words.slice(j,j+=16);
+    var oldHash=hash.slice(0);
+    for(i=0;i<64;i++){
+      var i2=i<16?W[i]:(W[i-16]+(rightRotate(W[i-15],7)^rightRotate(W[i-15],18)^(W[i-15]>>>3))+(W[i-7]|0)+(rightRotate(W[i-2],17)^rightRotate(W[i-2],19)^(W[i-2]>>>10)))|0;
+      W[i]=i2;
+      var t1=(hash[7]+(rightRotate(hash[4],6)^rightRotate(hash[4],11)^rightRotate(hash[4],25))+(hash[4]&hash[5]^~hash[4]&hash[6])+k[i]+i2)|0;
+      var t2=((rightRotate(hash[0],2)^rightRotate(hash[0],13)^rightRotate(hash[0],22))+(hash[0]&hash[1]^hash[0]&hash[2]^hash[1]&hash[2]))|0;
+      hash=[t1+t2|0,hash[0],hash[1],hash[2],hash[3]+t1|0,hash[4],hash[5],hash[6]];
+    }
+    for(i=0;i<8;i++) hash[i]=(hash[i]+oldHash[i])|0;
+  }
+  for(i=0;i<8;i++) for(j=3;j+1;j--){
+    var b=(hash[i]>>(j*8))&255;
+    result+=(b<16?'0':'')+b.toString(16);
+  }
+  return result;
+}
+</script>
+
 <div class="wrap">
 
 <!-- HEADER -->
